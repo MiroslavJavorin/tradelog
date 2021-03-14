@@ -3,9 +3,7 @@
 export POSIXLY_CORREXT=yes
 export LC_NUMERIC="en_US.UTF-8"
 
-
-debug_function()
-{
+debug_function() {
     if [ "$1" = "\n" ]; then
         echo "==============================$1"
         return
@@ -64,9 +62,7 @@ debug_function()
 # Skript vrací úspěch v případě úspěšné operace.
 # Interní chyba skriptu nebo chybné argumenty budou doprovázeny chybovým hlášením a neúspěšným návratovým kódem.
 
-
-print_help()
-{
+print_help() {
     echo "usage: tradelog [-h|--help]"
     echo "usage: tradelog [FILTER] [COMMAND] [LOG [LOG2 [...]]"
     echo "options:"
@@ -85,27 +81,23 @@ print_help()
     echo "-h and --help for help message"
 }
 
-
 # check error code end terimnate the programm if error occured
-finish_script()
-{
+finish_script() {
     case $EXIT_CODE in
-        ERROR_NO_ARGS_AFTER_FLAG )
-            >&2 echo "No arguments are provided after flag $CURR_COMMAND" #FIXME not sure about $CURR_COMMAND
-            exit 1
+    ERROR_NO_ARGS_AFTER_FLAG)
+        echo >&2 "No arguments are provided after flag $CURR_COMMAND" #FIXME not sure about $CURR_COMMAND
+        exit 1
         ;;
-        UNKNOWN_COMMAND )
-            >&2 echo "Unknown command: $1"
-            exit 1
+    UNKNOWN_COMMAND)
+        echo >&2 "Unknown command: $1"
+        exit 1
         ;;
     esac
 
 }
 
-
 # if source with data is empty, redirect input from stdin
-check_data_input()
-{
+check_data_input() {
     debug_function "in check_data_source"
     if [ "$DATA_FILES" = "" ]; then
         DATA_FILES="-"
@@ -113,7 +105,6 @@ check_data_input()
         debug_function "$DATA_FILES"
     fi
 }
-\
 
 #====================================================#
 #=====================MAIN_CYCLE=====================#
@@ -122,107 +113,120 @@ check_data_input()
 # add each valid to a COMMAND variable, then call function that will parse COMMAND
 # In case of invalid argument change EXIT_CODE to an appropriate exit code.
 #  By default variable has value NO_ARGS, because at the beginning no arguments are checked
-COMMAND=""        # FIXME delete me. Not sure it is necessary to use it
 # CURR_COMMAND="" # is it neccesary ?
-TICKERS=""        # tickers sefaratnd by | that were entered in commandline
-DATA_FILES=""     # input data. By default is from stdin
+
+POS_COMAND="" # list of values of currently held positions sorted in descending order by value.
+TICKERS=".*"  # ticker sieve: tickers sefaratnd by | that were entered in commandline
+DATA_FILES="" # input data. By default is from stdin
 
 LINE_FROM=""
 LINE_TO=""
 
-DATETIME_AFTER_YYYYMMDD=""
-DATETIME_AFTER_HHMMSS=""
-
-DATETIME_BEFORE_YYYYMMDD="9999:12:31"
-DATETIME_BEFORE_HHMMSS="24:59:59"
+DT_A=""
+DT_B="9999:12:31 00:00:00"
 
 EXIT_CODE=""
 
-while [ "$#" -gt 0 ] ; do
+while [ "$#" -gt 0 ]; do
     # CURR_COMMAND=$1 # is it neccesary ?
     debug_function "$1"
     case $1 in
-        -h|--help )
-            shift
-            # if -h and some other argument entered
-            if [ "$#" -ne 0 ]; then
-                EXIT_CODE=UNKNOWN_COMMAND
-                finish_script "$1"
-            fi
-            print_help
-            break
+    -h | --help)
+        shift
+        # if -h and some other argument entered
+        if [ "$#" -ne 0 ]; then
+            EXIT_CODE=UNKNOWN_COMMAND
+            finish_script "$1"
+        fi
+        print_help
+        break
         ;;
 
-        # list of values of currently held positions sorted in descending order by value.
-        pos )
-            shift
+    # list of values of currently held positions sorted in descending order by value.
+    pos)
+        POS_COMAND="$POS_COMMAND | sort "
         ;;
-        # list of existing stock symbols.
-        list-tick )
-            shift
+    # list of existing stock symbols.
+    list-tick) ;;
+
+    # list of values of currently held positions sorted in descending order by value"
+    profit) ;;
+
+    pos) ;;
+
+    # list the last known price for every known ticker."
+    last-price) ;;
+
+    # list of histogram of the number of transactions according to the ticker."
+    hist-ord) ;;
+
+    # list of graph of values of held positions according to the ticker."
+    graph-pos) ;;
+
+    -a) # -a YYYYMMDD HHMMSS
+        shift
+        DT_A="$1" # read year, month,  day
+        shift
+        DT_A="$DT_A $1" # read hour, minute, second
+        debug_function "$DT_A"
+        debug_function "Added date \"after\""
         ;;
-        # list of values of currently held positions sorted in descending order by value"
-        profit )
-            shift
+    -b) # -b YYYYMMDD HHMMSS
+        shift
+        DT_B="$1" # read year, month,  day
+        shift
+        DT_B="$DT_B $1" # read hour, minute, second
+        debug_function "$DT_B"
+        debug_function "Added date \"before\""
         ;;
-        pos )
-            shift
+    -t)
+        shift
+        if [ "$TICKERS" = ".*" ]; then
+            debug_function "1st ticker"
+            TICKERS="$1" # add a ticker
+        else
+            TICKERS="$TICKERS|$1" # add a ticker
+        fi
+        debug_function "$TICKERS added"
         ;;
-        # list the last known price for every known ticker."
-        last-price )
-            shift
+    -w) ;;
+
+    *.log)
+        debug_function "ADD FILENAME $1"
+        DATA_FILES="$DATA_FILES $1"
         ;;
-        # list of histogram of the number of transactions according to the ticker."
-        hist-ord )
-            shift
+    *.gz)
+        debug_function "ADD GZIP $1"
+        GZIP_FILES="$GZIP_FILES $1"
         ;;
-        # list of graph of values of held positions according to the ticker."
-        graph-pos )
-            shift
+    *)
+        debug_function "ADD TICKER $1"
+        TICKERS="$TICKERS|$1"
         ;;
-        -a )
-            shift
-        ;;
-        -b )
-            shift
-        ;;
-        -t )
-            shift
-            TICKERS="$1|$TICKERS" # add a ticker
-        ;;
-        -w )
-            shift
-        ;;
-        *.log )
-            debug_function "ADD FILENAME $1"
-            DATA_FILES="$DATA_FILES $1"
-            shift
-        ;;
-        *.gz )
-            debug_function "ADD GZIP $1"
-            GZIP_FILES="$GZIP_FILES $1"
-            shift
-        ;;
-        * )
-            debug_function "ADD TICKER $1"
-            TICKERS="$TICKERS $1"
-            shift
-            ;;
     esac
+    shift
     debug_function "\n"
 done
 
 check_data_input # if script got no filenames, use stdin as input source
 
+INPUT="cat $DATA_FILES"
+TICK_SIEVE_EXPR="\$2 ~ /^$TICKERS$/" # match lines with ticker from list of entered tickers
 
+
+DT_SIEVE_EXPR="\$1 > \"$DT_A\" && \$1 <\"$DT_B\""
+
+debug_function "$DT_SIEVE_EXPR"
+debug_function "\n"
+
+eval "$INPUT | awk -F ';' '$TICK_SIEVE_EXPR && $DT_SIEVE_EXPR {print \$0}'"
 
 ####======================SCRATCHES, DONT USE======================####
-READ_INPUT="cat"
-GET_ALL_TICKERS="grep '^.*;\($TICKERS\)'" # get all tickers from the file
+#GET_ALL_TICKERS="grep '^.*;\($TICKERS\)'" # get all tickers from the file
 
-AWK_COMMAND="awk 'comand' $DATA_FILES" # TODO i like it
+#AWK_COMMAND="awk 'comand' $DATA_FILES"
 
-READ_FILTERED="eval $READ_INPUT | awk -F ';' 'smth' "
+#READ_FILTERED="eval $READ_INPUT | awk -F ';' 'smth' "
 ####======================SCRATCHES, DONT USE======================####
 
 # AWK
@@ -233,9 +237,21 @@ READ_FILTERED="eval $READ_INPUT | awk -F ';' 'smth' "
 # awk '/regexp/ {printf $1,$2}' - print whole lines matchineg regexp
 # awk '/regexp/ && $2>number {printf $1,$2}' - $2 > number !! for data
 # awk -f FILENAME work filename
-# awk
+# awk '$1 == "TICKER" || $2 == "TICKER2" printf("privet" )'
+# awk 'BEGIN { print( "bigin" )} {printf(" main body" )} END{ printf( "end" ) }'
+# авк '{number_of_tickers = }'
 
+# awk '  /$$DATETIME_COL > "$DATETIME_TO_YYYYMMDD $DATETIME_TO_HHMM" &&  {printf(" %6.2f\n", /$1)} $FILE'
 
+# потом будет что-то типа
+#   ;eval " DATETIME_FILTR | NUMBERS_FILTER | ... "
 
 finish_script
 
+# TODO
+# TODO
+# TODO
+# TODO
+# TODO
+# TODO
+# TODO
