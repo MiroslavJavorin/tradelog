@@ -6,6 +6,10 @@ export LC_NUMERIC="en_US.UTF-8"
 
 debug_function()
 {
+    if [ "$1" = "\n" ]; then
+        echo "==============================$1"
+        return
+    fi
     echo "DEBUG: $1"
 }
 
@@ -109,26 +113,7 @@ check_data_input()
         debug_function "$DATA_FILES"
     fi
 }
-
-# If no flags detected, there can be 3 options:
-    # 1) .log filename
-    # 2) .gz archived file name
-    # 3) ticker name
-check_star_options()
-{
-    debug_function "in check_star_options()"
-
-    if [ "$1" = "/^*.log/" ]; then
-        debug_function "ADD FILENAME $1"
-        DATA_FILES="$DATA_FILES $1"
-    elif [ $1 = "/^*.gz" ]; then
-        debug_function "ADD GZIP $1"
-        GZIP_FILES="$GZIP_FILES $1"
-    else
-        debug_function "ADD TICKER $1"
-        TICKERS="$TICKERS $1"
-    fi
-}
+\
 
 #====================================================#
 #=====================MAIN_CYCLE=====================#
@@ -145,9 +130,11 @@ DATA_FILES=""     # input data. By default is from stdin
 LINE_FROM=""
 LINE_TO=""
 
-DATETIME_FROM=""
-DATETIME_TO="9999:9999:9999 9999:9999:9999"
+DATETIME_AFTER_YYYYMMDD=""
+DATETIME_AFTER_HHMMSS=""
 
+DATETIME_BEFORE_YYYYMMDD="9999:12:31"
+DATETIME_BEFORE_HHMMSS="24:59:59"
 
 EXIT_CODE=""
 
@@ -206,12 +193,23 @@ while [ "$#" -gt 0 ] ; do
         -w )
             shift
         ;;
-        * )
-            debug_function "In default case:"
-            check_star_options "$1"
+        *.log )
+            debug_function "ADD FILENAME $1"
+            DATA_FILES="$DATA_FILES $1"
             shift
         ;;
+        *.gz )
+            debug_function "ADD GZIP $1"
+            GZIP_FILES="$GZIP_FILES $1"
+            shift
+        ;;
+        * )
+            debug_function "ADD TICKER $1"
+            TICKERS="$TICKERS $1"
+            shift
+            ;;
     esac
+    debug_function "\n"
 done
 
 check_data_input # if script got no filenames, use stdin as input source
