@@ -1,5 +1,6 @@
 #!/bin/sh
 
+set -x
 export POSIXLY_CORREXT=yes
 export LC_NUMERIC="en_US.UTF-8"
 
@@ -81,19 +82,30 @@ print_help() {
     echo "-h and --help for help message"
 }
 
-# check error code end terimnate the programm if error occured
-finish_script() {
+check_command() {
+    res=$("$LIST_TICK" + "$PROFIT" + "$POS" + "$LAST_PRICE" + "$HIST_ORG" + "$GRAPH_POS")
+    debug_function "in check_command res == $res"
+    debug_function "\n"
+    if [ "$res" -ne 0 ];then
+        EXIT_CODE=MORE_THAN_ONE_CMD
+    fi
+}
+
+# check error code end terminate the program if error occured
+check_exit_code() {
+
+    debug_function "in check_exit_code(), EXIT_CODE is now \"$EXIT_CODE\""
+
     case $EXIT_CODE in
-    ERROR_NO_ARGS_AFTER_FLAG)
-        echo >&2 "No arguments are provided after flag $CURR_COMMAND" #FIXME not sure about $CURR_COMMAND
+    UNKNOWN_COMMAND)
+        echo >&2 "Unknown command: \"$1\"."
         exit 1
         ;;
-    UNKNOWN_COMMAND)
-        echo >&2 "Unknown command: $1"
+    MORE_THAN_ONE_CMD)
+        echo >&2 "More than 1 command entered: second command(you must not enter it) \"$1\"."
         exit 1
         ;;
     esac
-
 }
 
 # if source with data is empty, redirect input from stdin
@@ -122,8 +134,16 @@ DATA_FILES="" # input data. By default is from stdin
 LINE_FROM=""
 LINE_TO=""
 
+LIST_TICK=0  # list of existing stock symbols \"tickers\".
+PROFIT=0     # list total profit from closed positions.
+POS=0        # list of values of currently held positions sorted in descending order by value
+LAST_PRICE=0 # list the last known price for every known ticker.
+HIST_ORD=0   # list of histogram of the number of transactions according to the ticker.
+GRAPH_POS=0  # list of graph of values of held positions according to the ticker.
+
+
 DT_A=""
-DT_B="9999:12:31 00:00:00"
+DT_B="9999-99-99 99:99:99"
 
 EXIT_CODE=""
 
@@ -136,7 +156,7 @@ while [ "$#" -gt 0 ]; do
         # if -h and some other argument entered
         if [ "$#" -ne 0 ]; then
             EXIT_CODE=UNKNOWN_COMMAND
-            finish_script "$1"
+            check_exit_code "$1"
         fi
         print_help
         break
@@ -147,22 +167,34 @@ while [ "$#" -gt 0 ]; do
         POS_COMAND="$POS_COMMAND | sort "
         ;;
     # list of existing stock symbols.
-    list-tick) ;;
-
+    list-tick)
+        check_command # if one of th commands was entered before, return an error
+        LIST_TICK=1
+    ;;
     # list of values of currently held positions sorted in descending order by value"
-    profit) ;;
-
-    pos) ;;
-
+    profit)
+        check_command # -//-
+        PROFIT=1
+    ;;
+    pos)
+        check_command # -//-
+        POS=1
+    ;;
     # list the last known price for every known ticker."
-    last-price) ;;
-
+    last-price)
+        check_command # -//-
+        LAST_PRICE=1
+    ;;
     # list of histogram of the number of transactions according to the ticker."
-    hist-ord) ;;
-
+    hist-ord)
+        check_command # -//-
+        HIST_ORG=1
+    ;;
     # list of graph of values of held positions according to the ticker."
-    graph-pos) ;;
-
+    graph-pos)
+        check_command # -//-
+        GRAPH_POS=1
+    ;;
     -a) # -a YYYYMMDD HHMMSS
         shift
         DT_A="$1" # read year, month,  day
@@ -207,19 +239,48 @@ while [ "$#" -gt 0 ]; do
     shift
     debug_function "\n"
 done
-
 check_data_input # if script got no filenames, use stdin as input source
+check_exit_code  # if EXIT_CODE changed, raise an error
+
 
 INPUT="cat $DATA_FILES"
 TICK_SIEVE_EXPR="\$2 ~ /^$TICKERS$/" # match lines with ticker from list of entered tickers
-
 
 DT_SIEVE_EXPR="\$1 > \"$DT_A\" && \$1 <\"$DT_B\""
 
 debug_function "$DT_SIEVE_EXPR"
 debug_function "\n"
 
-eval "$INPUT | awk -F ';' '$TICK_SIEVE_EXPR && $DT_SIEVE_EXPR {print \$0}'"
+AFTER_FLAGS="eval "$INPUT | awk -F ';' '$TICK_SIEVE_EXPR && $DT_SIEVE_EXPR { print \$0}'""
+
+if   [ "$LIST_TICK "   -eq 1 ];   then
+    debug_function "LIST_TICK is about to run"
+    # TODO implemet functions
+elif [ "$PROFIT"     -eq 1 ];     then
+    debug_function "PROFIT is about to run"
+    # TODO implemet functions
+elif [ "$POS"        -eq 1 ];        then
+    debug_function "POS is about to run"
+elif [ "$LAST_PRICE" -eq 1 ]; then
+    debug_function "LAST_PRICE is about to run"
+    # TODO implemet functions
+elif [ "$HIST_ORG"   -eq 1 ];   then
+    debug_function "HIST_ORG is about to run"
+    # TODO implemet functions
+elif [ "$GRAPH_POS"  -eq 1 ];  then
+    debug_function "GRAPH_POS is about to run"
+    # TODO implemet functions
+fi
+
+
+
+
+
+
+
+
+
+
 
 ####======================SCRATCHES, DONT USE======================####
 #GET_ALL_TICKERS="grep '^.*;\($TICKERS\)'" # get all tickers from the file
@@ -246,7 +307,7 @@ eval "$INPUT | awk -F ';' '$TICK_SIEVE_EXPR && $DT_SIEVE_EXPR {print \$0}'"
 # потом будет что-то типа
 #   ;eval " DATETIME_FILTR | NUMBERS_FILTER | ... "
 
-finish_script
+
 
 # TODO
 # TODO
