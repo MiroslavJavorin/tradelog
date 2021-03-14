@@ -3,10 +3,11 @@
 export POSIXLY_CORREXT=yes
 export LC_NUMERIC="en_US.UTF-8"
 
-###
-# sed: sed -i
-# awk/gawk
 
+debug_function()
+{
+    echo "DEBUG: $1"
+}
 
 ##################################################################
 # Každý obchodovaný artikl má jednoznačný identifikátor, tzv. ticker
@@ -81,19 +82,13 @@ print_help()
 }
 
 
-# Internal script error or bad arguments will be accompanied by an error message and a failed return code
+# check error code end terimnate the programm if error occured
 finish_script()
 {
     case $EXIT_CODE in
-        SUCCESS )
-            exit 0
-        ;;
         ERROR_NO_ARGS_AFTER_FLAG )
             >&2 echo "No arguments are provided after flag $CURR_COMMAND" #FIXME not sure about $CURR_COMMAND
             exit 1
-        ;;
-        NO_ARGS )
-            exit 0
         ;;
         UNKNOWN_COMMAND )
             >&2 echo "Unknown command: $1"
@@ -103,9 +98,36 @@ finish_script()
 
 }
 
-debug_function()
+
+# if source with data is empty, redirect input from stdin
+check_data_input()
 {
-    echo "Argument entered: $1"
+    debug_function "in check_data_source"
+    if [ "$DATA_FILES" = "" ]; then
+        DATA_FILES="-"
+        debug_function "in check_data_source, \$DATA_FILES == \"-\""
+        debug_function "$DATA_FILES"
+    fi
+}
+
+# If no flags detected, there can be 3 options:
+    # 1) .log filename
+    # 2) .gz archived file name
+    # 3) ticker name
+check_star_options()
+{
+    debug_function "in check_star_options()"
+
+    if [ "$1" = "/^*.log/" ]; then
+        debug_function "ADD FILENAME $1"
+        DATA_FILES="$DATA_FILES $1"
+    elif [ $1 = "/^*.gz" ]; then
+        debug_function "ADD GZIP $1"
+        GZIP_FILES="$GZIP_FILES $1"
+    else
+        debug_function "ADD TICKER $1"
+        TICKERS="$TICKERS $1"
+    fi
 }
 
 #====================================================#
@@ -118,7 +140,14 @@ debug_function()
 COMMAND=""        # FIXME delete me. Not sure it is necessary to use it
 # CURR_COMMAND="" # is it neccesary ?
 TICKERS=""        # tickers sefaratnd by | that were entered in commandline
-INPUT_TABLE=""    # whole data
+DATA_FILES=""     # input data. By default is from stdin
+
+LINE_FROM=""
+LINE_TO=""
+
+DATETIME_FROM=""
+DATETIME_TO="9999:9999:9999 9999:9999:9999"
+
 
 EXIT_CODE=""
 
@@ -137,12 +166,11 @@ while [ "$#" -gt 0 ] ; do
             break
         ;;
 
-        # list of existing stock symbols tickers.
+        # list of values of currently held positions sorted in descending order by value.
         pos )
-
             shift
         ;;
-        # list total profit from closed positions.
+        # list of existing stock symbols.
         list-tick )
             shift
         ;;
@@ -173,15 +201,43 @@ while [ "$#" -gt 0 ] ; do
         ;;
         -t )
             shift
+            TICKERS="$1|$TICKERS" # add a ticker
         ;;
         -w )
             shift
         ;;
-
-
+        * )
+            debug_function "In default case:"
+            check_star_options "$1"
+            shift
+        ;;
     esac
-    COMMAND+=" "
 done
+
+check_data_input # if script got no filenames, use stdin as input source
+
+
+
+####======================SCRATCHES, DONT USE======================####
+READ_INPUT="cat"
+GET_ALL_TICKERS="grep '^.*;\($TICKERS\)'" # get all tickers from the file
+
+AWK_COMMAND="awk 'comand' $DATA_FILES" # TODO i like it
+
+READ_FILTERED="eval $READ_INPUT | awk -F ';' 'smth' "
+####======================SCRATCHES, DONT USE======================####
+
+# AWK
+# $0 - every lines
+# $1 - first column
+# /regexp/
+# awk '/regexp/ {printf $1}' - print all lines ;;with regexp matching
+# awk '/regexp/ {printf $1,$2}' - print whole lines matchineg regexp
+# awk '/regexp/ && $2>number {printf $1,$2}' - $2 > number !! for data
+# awk -f FILENAME work filename
+# awk
+
+
 
 finish_script
 
