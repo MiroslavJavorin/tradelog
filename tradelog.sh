@@ -7,9 +7,9 @@ export LC_NUMERIC="en_US.UTF-8" # for localization
 debug_function() {
     if [ "$1" = "\n" ]; then
         echo "==============================$1"
-        return
+    else
+        echo "DEBUG: $1"
     fi
-    echo "DEBUG: $1"
 }
 # set -x
 set -u # error if variable is not defined
@@ -60,8 +60,9 @@ check_w_num() {
 set_input() {
     if [ ! "$GZIP_FILES" = "" ]; then
         INPUT="gzip -d -c $GZIP_FILES | cat - $LOG_FILES"
-    else
+    elif [ ! "$LOG_FILES" == "" ]; then
         INPUT="cat $LOG_FILES" # create stdin input
+    else INPUT="cat -"
     fi
 }
 # check error code end terminate the program if error occurred
@@ -101,12 +102,12 @@ set_command() {
     # list of existing stock symbols.
     if [ "$LIST_TICK" -eq 1 ]; then
         debug_function "LIST_TICK is about to run"
-        COMMAND="awk -F ';' '{ print \$2 }' | sort -u"
+        COMMAND="| awk -F ';' '{ print \$2 }' | sort -u"
 
     # list total profit from closed positions.
     elif [ "$PROFIT" -eq 1 ]; then
         debug_function "PROFIT is about to run"
-        COMMAND="awk -F ';' '\
+        COMMAND="| awk -F ';' '\
             {if(\$3 ~ /^buy$/){sum-=\$4 * \$6}else{sum+=\$4 * \$6}}\
             END{printf(\"%.2f\\n\", sum)}'"
 
@@ -114,17 +115,17 @@ set_command() {
     elif [ "$POS" -eq 1 ]; then
 
         debug_function "POS is about to run"
-        COMMAND="\
+        COMMAND="|\
                     awk -F ';' \
                         '\
                             {\
-                                price[\$2] = \$4
-                                if(\$3 ~ /^buy$/){\
-                                    ticks[\$2] += \$6\
-                                }else{ticks[\$2] -= \$6}\
+                                price[\$2] = \$4;\
+                                ticks[\$2] += ( \$3 ~ /^buy$/ ) ? \$6 : -\$6;\
                             }\
-                            END {\
-                                for (tick_name in ticks) {\
+                            END \
+                            {\
+                                for (tick_name in ticks)\
+                                {\
                                     printf( \"%-10s: %11.2f\\n\", tick_name, ticks[tick_name] * price[tick_name])\
                                 }\
                             }\
@@ -137,14 +138,15 @@ set_command() {
     # list the last known price for every known ticker."
     elif [ "$LAST_PRICE" -eq 1 ]; then
         debug_function "LAST_PRICE is about to run"
-        COMMAND="\
+        COMMAND="| \
                 awk -F ';' \
                     '\
                         {\
                             last_price[\$2] = \$4
                         }\
                         END {\
-                            for (tick_name in last_price) {\
+                            for (tick_name in last_price)\
+                            {\
                                 printf( \"%-10s: %8.2f\\n\", tick_name, last_price[tick_name])\
                             }\
                         }\
@@ -156,12 +158,74 @@ set_command() {
     # list of histogram of the number of transactions according to the ticker."
     elif [ "$HIST_ORG" -eq 1 ]; then
         debug_function "HIST_ORG is about to run"
-        # TODO implemet functions
+                COMMAND="|\
+                awk -F ';' \
+                    '\
+                        {\
+                            transactions[\$2] += 1;\
+                            if (max_len < transactions[\$2] ) { max_len = transactions[\$2] }\
+                        }\
+                        END\
+                        {\
+                            for ( tick_name in transactions )\
+                            {\
+                                printf( \"%-10s: \", tick_name);\
+                                sym=\"#\";\
+                                step = max_len/(($WIDTH == 0) ? 1 : $WIDTH);\
+                                for ( num = step; num <= transactions[tick_name]; num += step )\
+                                {\
+                                    printf(\"%s\", sym)\
+                                };\
+                                printf(\"\\n\")\
+                            }\
+                        }\
+                    '\
+                |\
+                sort -u\
+             "
 
-    # list of graph of values of held positions according to the ticker."
+    # list of graph of values of held positions according to the ticker.
     elif [ "$GRAPH_POS" -eq 1 ]; then
         debug_function "GRAPH_POS is about to run"
-        # TODO implemet functions
+        COMMAND="|\
+                awk -F ';'\
+                    '\
+                        {\
+                            amount[\$2] += (\$3 ~ /^buy$/) ? \$6 : -\$6;\
+                            price[\$2]   = \$4;\
+                        }\
+                        END\
+                        {\
+                            for ( ticker in amount )\
+                            {\
+                                pta = price[ticker] * amount[ticker];\
+                                pta *= ( pta < 0 ) ? -1 : 1;\
+                                max_num = (max_num < pta) ? pta : max_num;\
+                            }\
+                            mon_per_sym = max_num / (( $WIDTH ) ? $WIDTH : 1 );\
+                            for ( ticker in amount )\
+                            {\
+                                printf( \"%-10s: \", ticker);\
+                                pta = amount[ticker] * price[ticker];\
+                                sym = \"#\";\
+                                if ( pta < 0 )\
+                                {\
+                                    sym = \"!\";\
+                                    pta *= -1;\
+                                }\
+                                i = mon_per_sym;\
+                                while ( pta > i )\
+                                {\
+                                    printf(\"%s\", sym);\
+                                    i += mon_per_sym;\
+                                }\
+                                printf(\"\\n\");\
+                            }\
+                        }\
+                    '\
+                | \
+                sort -u\
+                "
     fi
 }
 
@@ -185,6 +249,10 @@ COMMAND=""
 
 EXIT_CODE=""
 
+
+debug_function "NUMBER OF ARGS: $#"
+debug_function "\n"
+
 while [ "$#" -gt 0 ]; do
     debug_function "$1"
     #=================FILTER====================
@@ -197,7 +265,6 @@ while [ "$#" -gt 0 ]; do
             check_exit_code "$1"
         fi
         print_help
-        break
         ;;
 
     # list of existing stock symbols.
@@ -235,6 +302,7 @@ while [ "$#" -gt 0 ]; do
         check_command # -//-
         GRAPH_POS=1
         ;;
+
         #=================FILTER====================
 
         #=================COMMAND====================
@@ -262,12 +330,11 @@ while [ "$#" -gt 0 ]; do
     -t)
         shift
         if [ "$TICKERS" = ".*" ]; then
-            debug_function "1st ticker"
             TICKERS="$1" # add a ticker
         else
             TICKERS="$TICKERS|$1" # add a ticker
         fi
-        debug_function "$TICKERS added"
+        debug_function "TICKERS: $TICKERS added"
         ;;
 
         # u výpisu grafů nastavuje jejich šířku, tedy délku nejdelšího řádku na WIDTH.
@@ -276,19 +343,20 @@ while [ "$#" -gt 0 ]; do
         check_w_flag
         shift
         WIDTH="$1"
-        check_w_num "$WIDTH"
-        shift
+        check_w_num    "$WIDTH"
+        debug_function "WIDTH: $1"
         ;;
 
     # name of input file has been entered
     *.log)
         check_file "$1"
+        debug_function "$1"
         LOG_FILES="$LOG_FILES $1"
         ;;
 
     # name of an archived file has been entered
     *.gz)
-        check_file "$1"
+        check_file     "$1"
         GZIP_FILES="$GZIP_FILES $1"
         ;;
 
@@ -311,7 +379,7 @@ debug_function "GZIP_FILES: $GZIP_FILES"
 debug_function "\n"
 
 # add gzip files
-set_input
+set_input # create command handling input
 
 TICKERS_SIEVE="\$2 ~ /^$TICKERS$/"
 DT_SIEVE="\$1 > \"$DT_A\" && \$1 <\"$DT_B\""
@@ -319,6 +387,6 @@ DT_SIEVE="\$1 > \"$DT_A\" && \$1 <\"$DT_B\""
 FILTERED="$INPUT | awk -F ';' '$TICKERS_SIEVE && $DT_SIEVE { print \$0 }'"
 
 set_command
-debug_function "COMMAND: $COMMAND"
 
-eval "$FILTERED | $COMMAND "
+eval "$FILTERED $COMMAND"
+
