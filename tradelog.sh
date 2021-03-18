@@ -3,20 +3,6 @@
 export POSIXLY_CORREXT=yes
 export LC_NUMERIC="en_US.UTF-8" # for localization
 
-#==============DEBUG===============
-##debug_function() {
-		
-#	if [ "$1" = "\n" ]; then
-#		echo "==============================$1"
-#	else
-#        echo "DEBUG: $1"
-#    fi
-#}
-
-# set -x
-# set -u # error if variable is not defined
-#==============DEBUG===============
-
 print_help() {
 	echo "usage: tradelog [-h|--help]"
 	echo "usage: tradelog [FILTER] [COMMAND] [LOG [LOG2 [...]]"
@@ -46,8 +32,6 @@ check_w_flag() {
 # this function checks if no more than one caommand have been entered
 check_command() {
 	res=$((LIST_TICK + PROFIT + POS + LAST_PRICE + HIST_ORD + GRAPH_POS))
-    #debug_function "in check_command res == $res"
-	#debug_function "\n"
 	if [ "$res" -ne 0 ]; then
 		EXIT_CODE=MORE_THAN_ONE_CMD
 	fi
@@ -71,7 +55,6 @@ set_input() {
 # check error code end terminate the program if error occurred
 check_exit_code() {
 
-	#debug_function "in check_exit_code(), EXIT_CODE is now \"$EXIT_CODE\""
 
 	case $EXIT_CODE in
 	UNKNOWN_COMMAND)
@@ -93,24 +76,18 @@ check_exit_code() {
 # chevk if file exists
 check_file() {
 	if [ ! -f "$1" ]; then # if file does not exist
-		#debug_function "File with name \"$1\" doe not exist"
-		#debug_function "Terminatng"
-		#debug_function "\n"
         EXIT_CODE=FILE_N_EXIST # change an exit code
 		return
 	fi
-	#debug_function "ADD FILENAME $1"
 }
 
 set_command() {
 	# list of existing stock symbols.
 	if [ "$LIST_TICK" -eq 1 ]; then
-		#debug_function "LIST_TICK is about to run"
 		COMMAND="| awk -F ';' '{ print \$2 }' | sort -u"
 
 	# list total profit from closed positions.
 	elif [ "$PROFIT" -eq 1 ]; then
-		#debug_function "PROFIT is about to run"
 		COMMAND="| awk -F ';' '\
 			{ sum += ( \$3 ~ /^buy$/ ) ? -\$4 * \$6 : \$4 * \$6;}\
 			END{ printf(\"%.2f\\n\", sum) }'"
@@ -118,7 +95,6 @@ set_command() {
 	#list of values of currently held positions sorted in descending order by value"
 	elif [ "$POS" -eq 1 ]; then
 
-		#debug_function "POS is about to run"
 		COMMAND="|\
 				awk -F ';' \
 					'\
@@ -141,7 +117,6 @@ set_command() {
 
 	# list the last known price for every known ticker.
 	elif [ "$LAST_PRICE" -eq 1 ]; then
-		#debug_function "LAST_PRICE is about to run"
 		COMMAND="| \
 			awk -F ';' \
 				'\
@@ -162,7 +137,6 @@ set_command() {
 
 	# list of histogram of the number of transactions according to the ticker."
 	elif [ "$HIST_ORD" -eq 1 ]; then
-		#debug_function "HIST_ORD is about to run"
 		COMMAND="|\
 			awk -F ';'\
 			'\
@@ -194,7 +168,6 @@ set_command() {
 
     # list of graph of values of held positions according to the ticker.
 	elif [ "$GRAPH_POS" -eq 1 ]; then
-		#debug_function "GRAPH_POS is about to run"
 		COMMAND="|\
 			awk -F ';'\
 			'\
@@ -258,11 +231,8 @@ COMMAND=""
 EXIT_CODE=""
 
 
-#debug_function "NUMBER OF ARGS: $#"
-#debug_function "\n"
 
 while [ "$#" -gt 0 ]; do
-	#debug_function "$1"
 	#=================FILTER====================
 	case $1 in
 		-h | --help)
@@ -320,8 +290,6 @@ while [ "$#" -gt 0 ]; do
 			DT_A="$1" # read year, month,  day
 			shift
 			DT_A="$DT_A $1" # read hour, minute, second
-			#debug_function "$DT_A"
-			#debug_function "Added date \"after\""
 		;;
 
 		# process logs before entered date
@@ -330,8 +298,6 @@ while [ "$#" -gt 0 ]; do
 			DT_B="$1" # read year, month,  day
 			shift
 			DT_B="$DT_B $1" # read hour, minute, second
-			#debug_function "$DT_B"
-			#debug_function "Added date \"before\""
 		;;
 
 		# ticker name
@@ -342,7 +308,6 @@ while [ "$#" -gt 0 ]; do
 				else
 				TICKERS="$TICKERS|$1" # add a ticker
 			fi
-			#debug_function "TICKERS: $TICKERS added"
 		;;
 
 		-w)
@@ -350,13 +315,11 @@ while [ "$#" -gt 0 ]; do
 			shift
 			WIDTH="$1"
 			check_w_num    "$WIDTH"
-			#debug_function "WIDTH: $1"
 		;;
 
 		# name of input file has been entered
 		*.log)
 			check_file "$1"
-			#debug_function "$1"
 			LOG_FILES="$LOG_FILES $1"
 		;;
 
@@ -373,14 +336,11 @@ while [ "$#" -gt 0 ]; do
 	esac
 #=================COMMAND====================
 shift
-#debug_function "\n"
 
 check_exit_code # if EXIT_CODE changed, raise an error
 done
 
 
-#debug_function "GZIP_FILES: $GZIP_FILES"
-#debug_function "\n"
 
 set_input # create command handling input
 
