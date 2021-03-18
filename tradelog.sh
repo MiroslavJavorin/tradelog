@@ -57,6 +57,13 @@ check_w_num() {
     fi
 }
 
+set_input() {
+    if [ ! "$GZIP_FILES" = "" ]; then
+        INPUT="gzip -d -c $GZIP_FILES | cat - $LOG_FILES"
+    else
+        INPUT="cat $LOG_FILES" # create stdin input
+    fi
+}
 # check error code end terminate the program if error occurred
 check_exit_code() {
 
@@ -108,25 +115,43 @@ set_command() {
 
         debug_function "POS is about to run"
         COMMAND="\
-        awk -F ';' \
-        '\
-            {\
-                if(\$3 ~ /^buy$/){\
-                    ticks[\$2] -= \$6\
-                }else{ticks[\$2] += \$6}\
-            }\
-            END {\
-                for (tick_name in ticks) {\
-                    printf( \"%-10s: %11.2f\\n\", tick_name, ticks[tick_name] * \$4)\
-                }\
-            }\
-        '\
-        | sort -n -t ':' -k2 -r
-        "
+                    awk -F ';' \
+                        '\
+                            {\
+                                price[\$2] = \$4
+                                if(\$3 ~ /^buy$/){\
+                                    ticks[\$2] += \$6\
+                                }else{ticks[\$2] -= \$6}\
+                            }\
+                            END {\
+                                for (tick_name in ticks) {\
+                                    printf( \"%-10s: %11.2f\\n\", tick_name, ticks[tick_name] * price[tick_name])\
+                                }\
+                            }\
+                        '\
+                    | \
+                    sort -n -t ':' -k2 -r\
+                 "
+
+
     # list the last known price for every known ticker."
     elif [ "$LAST_PRICE" -eq 1 ]; then
         debug_function "LAST_PRICE is about to run"
-        # TODO implemet functions
+        COMMAND="\
+                awk -F ';' \
+                    '\
+                        {\
+                            last_price[\$2] = \$4
+                        }\
+                        END {\
+                            for (tick_name in last_price) {\
+                                printf( \"%-10s: %8.2f\\n\", tick_name, last_price[tick_name])\
+                            }\
+                        }\
+                    '\
+                | \
+                sort -u\
+             "
 
     # list of histogram of the number of transactions according to the ticker."
     elif [ "$HIST_ORG" -eq 1 ]; then
@@ -286,11 +311,7 @@ debug_function "GZIP_FILES: $GZIP_FILES"
 debug_function "\n"
 
 # add gzip files
-if [ ! "$GZIP_FILES" = "" ]; then
-    GZIP_FILES="gzip -d -c $GZIP_FILES|"
-fi
-
-INPUT="$GZIP_FILES cat - $LOG_FILES" # create stdin input
+set_input
 
 TICKERS_SIEVE="\$2 ~ /^$TICKERS$/"
 DT_SIEVE="\$1 > \"$DT_A\" && \$1 <\"$DT_B\""
