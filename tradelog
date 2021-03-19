@@ -112,7 +112,7 @@ set_command() {
 							};\
 							for (tick_name in ticks)\
 							{\
-								printf( \"%-10s:%*.2f\\n\", tick_name, max_len+1, ticks[tick_name] * price[tick_name])\
+								printf( \"%-10s: %*.2f\\n\", tick_name, max_len, ticks[tick_name] * price[tick_name])\
 							}\
 						}\
 					'\
@@ -139,7 +139,7 @@ set_command() {
 						};\
 						for ( tick_name in last_price )\
 						{\
-							printf( \"%-10s:%*.2f\\n\", tick_name,max_len+1, last_price[tick_name])\
+							printf( \"%-10s: %*.2f\\n\", tick_name, max_len, last_price[tick_name])\
 						}\
 					}\
 				'\
@@ -161,12 +161,11 @@ set_command() {
 					trans_per_sym = (( $WIDTH ) ? max_len / $WIDTH : 1 );\
 					for ( ticker in transactions )\
 					{\
-						printf( \"%-10s:\", ticker);\
+						printf( \"%-10s: \", ticker);\
 						sym = \"#\";\
 						upper_bound = transactions[ticker] - trans_per_sym;\
 						for ( i = 0; i <= upper_bound; i += trans_per_sym )\
 						{\
-							if ( i == 0 ) printf(\" \" );
 							printf(\"%s\", sym);\
 						}\
 						printf(\"\\n\");\
@@ -198,7 +197,7 @@ set_command() {
 					mon_per_sym = (( $WIDTH ) ? max_num / $WIDTH : 1000 );\
 					for ( ticker in amount )\
 					{\
-						printf( \"%-10s:\", ticker);\
+						printf( \"%-10s: \", ticker);\
 						pta = amount[ticker] * price[ticker];\
 						sym = \"#\";\
 						if ( pta < 0 )\
@@ -209,7 +208,6 @@ set_command() {
 						upper_bound = pta - mon_per_sym;\
 						for ( i = 0; i <= upper_bound; i += mon_per_sym )\
 						{\
-							if ( i == 0 ) printf(\" \");\
 							printf(\"%s\", sym);\
 						}\
 						printf(\"\\n\");\
