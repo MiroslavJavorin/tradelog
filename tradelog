@@ -52,6 +52,7 @@ set_input() {
 	fi
 }
 
+
 # check error code end terminate the program if error occurred
 check_exit_code() {
 
@@ -341,7 +342,7 @@ while [ "$#" -gt 0 ]; do
 
 		# TICKERS
 		*)
-			TICKERS="$TICKERS|$1"
+			EXIT_CODE=UNKNOWN_COMMAND
 		;;
 	esac
 #=================COMMAND====================
@@ -354,8 +355,9 @@ done
 
 set_input # create command handling input
 
-TICKERS_SIEVE="\$2 ~ /^$TICKERS$/"
+TICKERS_SIEVE="\$2 ~ /^($TICKERS)$/"
 DT_SIEVE="\$1 > \"$DT_A\" && \$1 <\"$DT_B\""
+
 
 # $FILTERED is input filtered byticker name and data
 FILTERED="$INPUT | awk -F ';' '$TICKERS_SIEVE && $DT_SIEVE { print \$0 }'"
@@ -366,5 +368,6 @@ set_command
 
 
 eval "$FILTERED $COMMAND"
+
 
 
