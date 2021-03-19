@@ -104,9 +104,15 @@ set_command() {
 						}\
 						END \
 						{\
+							for ( tick_name in ticks )\
+							{\
+								to_string = sprintf(\"%.2f\", ticks[tick_name] * price[tick_name] );\
+								len = length( to_string );\
+								max_len = ( max_len < len) ? len : max_len;\
+							};\
 							for (tick_name in ticks)\
 							{\
-								printf( \"%-10s: %11.2f\\n\", tick_name, ticks[tick_name] * price[tick_name])\
+								printf( \"%-10s:%*.2f\\n\", tick_name, max_len+1, ticks[tick_name] * price[tick_name])\
 							}\
 						}\
 					'\
@@ -125,9 +131,15 @@ set_command() {
 					}\
 					END\
 					{\
-						for (tick_name in last_price)\
+						for ( tick_name in last_price )\
 						{\
-							printf( \"%-10s: %8.2f\\n\", tick_name, last_price[tick_name])\
+							to_string = sprintf(\"%.2f\", last_price[tick_name] );\
+							len = length( to_string );\
+							max_len = ( max_len < len) ? len : max_len;\
+						};\
+						for ( tick_name in last_price )\
+						{\
+							printf( \"%-10s:%*.2f\\n\", tick_name,max_len+1, last_price[tick_name])\
 						}\
 					}\
 				'\
