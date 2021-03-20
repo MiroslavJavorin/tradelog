@@ -363,16 +363,12 @@ while [ "$#" -gt 0 ]; do
 		-a)
 			shift
 			DT_A="$1" # read year, month,  day
-			shift
-			DT_A="$DT_A $1" # read hour, minute, second
 		;;
 
 		# process logs before entered date
 		-b) # -b YYYYMMDD HHMMSS
 			shift
 			DT_B="$1" # read year, month,  day
-			shift
-			DT_B="$DT_B $1" # read hour, minute, second
 		;;
 
 		# ticker name
