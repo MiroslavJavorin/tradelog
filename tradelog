@@ -155,7 +155,7 @@ set_command() {
 							{\
 								to_string = sprintf(\"%.2f\", ticks[tick_name] * price[tick_name] );\
 								len = length( to_string );\
-								max_len = ( max_len < len) ? len : max_len;\
+								max_len = ( max_len < len ) ? len : max_len;\
 							};\
 							for (tick_name in ticks)\
 							{\
@@ -210,10 +210,10 @@ set_command() {
 					{\
 						printf( \"%-10s:\", ticker);\
 						sym = \"#\";\
-						upper_bound = transactions[ticker] - trans_per_sym;\
-						for ( i = 0; i <= upper_bound; i += trans_per_sym )\
+						upper_bound = transactions[ticker] / trans_per_sym;\
+						for ( i = upper_bound; i >= 1; i -= 1 )\
 						{\
-							if( i == 0)\
+							if( i == upper_bound )\
 							{\
 								printf(\" \");\
 							}\
@@ -256,10 +256,10 @@ set_command() {
 							sym = \"!\";\
 							pta *= -1;\
 						}\
-						upper_bound = pta - mon_per_sym;\
-						for ( i = 0; i <= upper_bound; i += mon_per_sym )\
+						upper_bound = pta / mon_per_sym;\
+						for ( i = upper_bound; i >= 1; i -= 1 )\
 						{\
-							if( i == 0 )\
+							if( i == upper_bound )\
 							{\
 								printf(\" \");\
 							}\
