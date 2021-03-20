@@ -1,8 +1,27 @@
 #!/bin/sh
 
-export POSIXLY_CORREXT=yes
-export LC_NUMERIC="en_US.UTF-8" # for localization
+# Solution for IOS-PROJ1 20.3.2021
+# File:        tradelog
+# Author:      Skuratovich Aliaksandr(xskura01), FIT
+# "Orthodoxy is unconsciousness"
 
+
+##################################################################################
+##################################################################################
+#                                 NECESSARY EXPORTS
+#################################################################################
+export POSIXLY_CORREXT=yes      #
+export LC_NUMERIC="en_US.UTF-8" # for localization
+export LC_ALL=C                 # for correctly sorted output
+#################################################################################
+
+
+
+
+##################################################################################
+##################################################################################
+#                                 FUNCTIONS
+#################################################################################
 print_help() {
 	echo "usage: tradelog [-h|--help]"
 	echo "usage: tradelog [FILTER] [COMMAND] [LOG [LOG2 [...]]"
@@ -22,11 +41,20 @@ print_help() {
 	echo "-h and --help for help message"
 }
 
+
 check_w_flag() {
 	if [ ! "$WIDTH" = 0 ]; then
 		EXIT_CODE=MORE_THAN_ONCE
 	fi
 }
+
+
+check_w_num() {
+	if [ ! "$1" -ge 0 ]; then
+		EXIT_CODE=NON_INTEGER_AFTER_W
+	fi
+}
+
 
 # in the script there cannot be entered more than one command, so
 # this function checks if no more than one caommand have been entered
@@ -37,11 +65,24 @@ check_command() {
 	fi
 }
 
-check_w_num() {
-	if [ ! "$1" -ge 0 ]; then
-		EXIT_CODE=NON_INTEGER_AFTER_W
-	fi
+
+# TICKERS_SIEVE is expression for sorting by tickers
+set_tickers_sieve() {
+	TICKERS_SIEVE="\$2 ~ /^($TICKERS)$/"
 }
+
+
+# DT_SIEVE is expression for sorting by date and time  
+set_dt_sieve() {
+	DT_SIEVE="\$1 > \"$DT_A\" && \$1 <\"$DT_B\""
+}	
+
+
+# FILTERED is input filtered byticker name and data
+set_input_filter() {
+	FILTERED="$INPUT | awk -F ';' '$TICKERS_SIEVE && $DT_SIEVE { print \$0 }'"
+}
+
 
 set_input() {
 	if [ ! "$GZIP_FILES" = "" ]; then
@@ -58,29 +99,34 @@ check_exit_code() {
 
 
 	case $EXIT_CODE in
-	UNKNOWN_COMMAND)
-		echo >&2 "Unknown command: \"$1\"."
-		exit 1
-	;;
-
-	MORE_THAN_ONCE)
-		echo >&2 "More than 1 command entered: second command(you must not enter it) \"$1\"."
-		exit 1
-	;;
-	NON_INTEGER_AFTER_W)
-		echo >&2 "Number that was entered after \"-w\" is not a positive whole number \"$1\"."
-		exit 1
-	;;
+		UNKNOWN_COMMAND)
+			echo >&2 "Unknown command! "
+			echo >&2  "tradelog [-h|--help] for help"
+			exit 1
+		;;
+	
+		MORE_THAN_ONCE)
+			echo >&2 "More than 1 command entered!"
+			echo >&2  "tradelog [-h|--help] for help"
+			exit 1
+		;;
+		NON_INTEGER_AFTER_W)
+			echo >&2 "Number that was entered after \"-w\" is not a positive whole number!"
+			echo >&2  "tradelog [-h|--help] for help"
+			exit 1
+		;;
 	esac
 }
 
-# chevk if file exists
+
+# check if file exists
 check_file() {
 	if [ ! -f "$1" ]; then # if file does not exist
         EXIT_CODE=FILE_N_EXIST # change an exit code
 		return
 	fi
 }
+
 
 set_command() {
 	# list of existing stock symbols.
@@ -162,11 +208,15 @@ set_command() {
 					trans_per_sym = (( $WIDTH ) ? max_len / $WIDTH : 1 );\
 					for ( ticker in transactions )\
 					{\
-						printf( \"%-10s: \", ticker);\
+						printf( \"%-10s:\", ticker);\
 						sym = \"#\";\
 						upper_bound = transactions[ticker] - trans_per_sym;\
 						for ( i = 0; i <= upper_bound; i += trans_per_sym )\
 						{\
+							if( i == 0)\
+							{\
+								printf(\" \");\
+							}\
 							printf(\"%s\", sym);\
 						}\
 						printf(\"\\n\");\
@@ -198,7 +248,7 @@ set_command() {
 					mon_per_sym = (( $WIDTH ) ? max_num / $WIDTH : 1000 );\
 					for ( ticker in amount )\
 					{\
-						printf( \"%-10s: \", ticker);\
+						printf( \"%-10s:\", ticker);\
 						pta = amount[ticker] * price[ticker];\
 						sym = \"#\";\
 						if ( pta < 0 )\
@@ -209,6 +259,10 @@ set_command() {
 						upper_bound = pta - mon_per_sym;\
 						for ( i = 0; i <= upper_bound; i += mon_per_sym )\
 						{\
+							if( i == 0 )\
+							{\
+								printf(\" \");\
+							}\
 							printf(\"%s\", sym);\
 						}\
 						printf(\"\\n\");\
@@ -220,7 +274,15 @@ set_command() {
 			"
 	fi
 }
+##################################################################################
 
+
+
+
+##################################################################################
+##################################################################################
+#                                 VARIABLES
+##################################################################################
 LOG_FILES=""
 GZIP_FILES=""
 
@@ -240,20 +302,22 @@ DT_B="9999-99-99 99:99:99" # datetime before
 COMMAND=""
 
 EXIT_CODE=""
+##################################################################################
 
 
 
+
+##################################################################################
+##################################################################################
+#                                 ARGUMENT PARSER
+##################################################################################
 while [ "$#" -gt 0 ]; do
 	#=================FILTER====================
 	case $1 in
 		-h | --help)
 			shift
-			# if -h and some other argument entered
-			if [ "$#" -ne 0 ]; then
-				EXIT_CODE=UNKNOWN_COMMAND
-				check_exit_code "$1"
-			fi
 			print_help
+			exit 0
 		;;
 
 		# list of existing stock symbols.
@@ -292,9 +356,9 @@ while [ "$#" -gt 0 ]; do
 			GRAPH_POS=1
 		;;
 
-		#=================FILTER====================
+	#=====================================
 
-		#=================COMMAND====================
+	#=================COMMAND====================
 		# process logs after entered date
 		-a)
 			shift
@@ -345,29 +409,34 @@ while [ "$#" -gt 0 ]; do
 			EXIT_CODE=UNKNOWN_COMMAND
 		;;
 	esac
-#=================COMMAND====================
-shift
+	#=====================================
+	shift
 
-check_exit_code # if EXIT_CODE changed, raise an error
+	check_exit_code # if EXIT_CODE changed, raise an error
 done
+##################################################################################
 
 
 
-set_input # create command handling input
 
-TICKERS_SIEVE="\$2 ~ /^($TICKERS)$/"
-DT_SIEVE="\$1 > \"$DT_A\" && \$1 <\"$DT_B\""
+##################################################################################
+##################################################################################
+#                                 SETTERS
+##################################################################################
+set_input          # create command handling input
 
+set_tickers_sieve  # create expression for sorting input by a ticker name
+set_dt_sieve       # -//-                                    "date and time"
 
-# $FILTERED is input filtered byticker name and data
-FILTERED="$INPUT | awk -F ';' '$TICKERS_SIEVE && $DT_SIEVE { print \$0 }'"
-
-# add a command to a variable $COMMAND
-set_command
-
-
-
-eval "$FILTERED $COMMAND"
+set_input_filter   # combine $TICKERS_SIEVE and DT_SEIVE into a command
+set_command        # add a command to a variable $COMMAND
+##################################################################################
 
 
+##################################################################################
+##################################################################################
+#                                 MAIN COMMAND
+##################################################################################
+eval "$FILTERED $COMMAND" # run command
+##################################################################################
 
